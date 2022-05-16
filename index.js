@@ -17,12 +17,18 @@ async function run() {
         await client.connect()
         console.log('MongoDB Connected');
         const servicesCollection = client.db('doctors-portal').collection('available-services')
+        const bookingCollection = client.db('doctors-portal').collection('booking-info')
 
         app.get('/availableServices', async(req , res) => {
             const query = {};
             const cursor = servicesCollection.find(query)
             const availableServices = await cursor.toArray()
             res.send(availableServices)
+        })
+        app.post('/bookingInfo', async (req, res) => {
+            const bookingInfo = req.body
+            const result = await bookingCollection.insertOne(bookingInfo)
+            res.send(result)
         })
     }
     finally {
