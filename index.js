@@ -16,7 +16,14 @@ async function run() {
     try {
         await client.connect()
         console.log('MongoDB Connected');
-        // const collection = client.db('doctors-portal').collection('')
+        const servicesCollection = client.db('doctors-portal').collection('available-services')
+
+        app.get('/availableServices', async(req , res) => {
+            const query = {};
+            const cursor = servicesCollection.find(query)
+            const availableServices = await cursor.toArray()
+            res.send(availableServices)
+        })
     }
     finally {
         
