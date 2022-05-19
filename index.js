@@ -27,6 +27,15 @@ async function run() {
             const availableServices = await cursor.toArray()
             res.send(availableServices)
         })
+        // load booking services using email
+        app.get('/booking', async(req , res) => {
+            const email = req.query.email;
+            const query = {email : email}
+            console.log(query);
+            const cursor = bookingCollection.find(query)
+            const result = await cursor.toArray()
+            res.send(result)
+        })
         // store user appointment booking info
         app.post('/bookingInfo', async (req, res) => {
             const bookingInfo = req.body
@@ -38,6 +47,23 @@ async function run() {
             }
             const result = await bookingCollection.insertOne(bookingInfo)
             return res.send({booking : true, result })
+        })
+
+        // 
+        app.get('/available', async(req, res) => {
+            const date = req.query.date
+            console.log(date);
+            const availavleServices = await servicesCollection.find().toArray()
+            const query = {date: date}
+            const bookedAppointments = await bookingCollection.find(query).toArray() //booked by modal
+            availavleServices.forEach(service => {
+                // will be an array of 
+                const filteredBookedAppointments = bookedAppointments.filter(appointment => appointment.treatmentName === service.name)
+                const bookedSlots = filteredBookedAppointments.map(appointment => appointment.time)
+                service.slots = service.slots.filter( slot => !bookedSlots.includes(slot))
+            })
+            
+            res.send(availavleServices)
         })
     }
     finally {
