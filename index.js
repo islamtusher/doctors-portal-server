@@ -16,19 +16,28 @@ async function run() {
     try {
         await client.connect()
         console.log('MongoDB Connected');
+
         const servicesCollection = client.db('doctors-portal').collection('available-services')
         const bookingCollection = client.db('doctors-portal').collection('booking-info')
-
+        
+        // load all available services
         app.get('/availableServices', async(req , res) => {
             const query = {};
             const cursor = servicesCollection.find(query)
             const availableServices = await cursor.toArray()
             res.send(availableServices)
         })
+        // store user appointment booking info
         app.post('/bookingInfo', async (req, res) => {
             const bookingInfo = req.body
+            console.log(bookingInfo);
+            const query = { treatmentName: bookingInfo.treatmentName, email: bookingInfo.email, date: bookingInfo.date }
+            const booked = await bookingCollection.findOne(query)
+            if (booked) {
+                return res.send({booking : false, message: 'Already Booked By You', })
+            }
             const result = await bookingCollection.insertOne(bookingInfo)
-            res.send(result)
+            return res.send({booking : true, result })
         })
     }
     finally {
