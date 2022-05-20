@@ -32,8 +32,9 @@ async function run() {
         // load booking services using email
         app.get('/booking', async(req , res) => {
             const email = req.query.email;
+            const authorization = req.headers.authorization
+            console.log(authorization);
             const query = {email : email}
-            console.log(query);
             const cursor = bookingCollection.find(query)
             const result = await cursor.toArray()
             res.send(result)
