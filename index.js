@@ -13,6 +13,25 @@ app.use(express.json())
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cbuwi.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+// JWT TOKEN VERIFYING 
+function jwtVerify(req, res, next) {
+    const authorization = req.headers.authorization
+
+    if (!authorization) {
+        return res.status(401).send({message: 'UnAuthorize Access'})
+    } else {
+        const accessToken = authorization.split(" ")[1]
+        jwt.verify(accessToken, process.env.ACCESS_TOKEN, function (err, decoded) {
+            if (err) {
+                return res.status(403).send({message: 'Forbidden Access'})
+            }
+            req.decoded = decoded
+            console.log(decoded) 
+            next()
+          });
+    }
+}
+
 async function run() {
     try {
         await client.connect()
@@ -29,16 +48,20 @@ async function run() {
             const availableServices = await cursor.toArray()
             res.send(availableServices)
         })
+
         // load booking services using email
-        app.get('/booking', async(req , res) => {
+        app.get('/booking', jwtVerify, async(req , res) => {
             const email = req.query.email;
-            const authorization = req.headers.authorization
-            console.log(authorization);
-            const query = {email : email}
+            const query = { email: email }
+            const decoded = req.decoded
+            if (!decoded.email === email) {
+                return res.status(403).send({message: 'Forbidden Access'})
+            }
             const cursor = bookingCollection.find(query)
             const result = await cursor.toArray()
-            res.send(result)
+            return res.send(result)
         })
+
         // store user appointment booking info
         app.post('/bookingInfo', async (req, res) => {
             const bookingInfo = req.body
@@ -66,6 +89,13 @@ async function run() {
             
             res.send({result, token})
 
+        })
+
+        // load all user
+        app.get('/users', async (req, res) => {
+            // const query = {}
+            const resutl = await userCollection.find().toArray()
+            res.send(resutl)
         })
 
         // loading the all services
