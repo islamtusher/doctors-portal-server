@@ -65,7 +65,6 @@ async function run() {
         // store user appointment booking info
         app.post('/bookingInfo', async (req, res) => {
             const bookingInfo = req.body
-            console.log(bookingInfo);
             const query = { treatmentName: bookingInfo.treatmentName, email: bookingInfo.email, date: bookingInfo.date }
             const booked = await bookingCollection.findOne(query)
             if (booked) {
@@ -91,29 +90,51 @@ async function run() {
 
         })
 
-        // Update user to admin
-        app.put('/user/admin/:email', async (req, res) => {
-            const email = req.params.email
-            const filter = { email: email }
-            const updateDoc = {
-                $set:{role : 'admin'}
-            }
-            const result = await userCollection.updateOne(filter, updateDoc)
-            res.send(result)
-        })
-
         // load all user
         app.get('/users', async (req, res) => {
-            // const query = {}
             const resutl = await userCollection.find().toArray()
             res.send(resutl)
         })
 
+        // Update user to admin
+        app.put('/user/admin/:email', jwtVerify, async (req, res) => {
+            const email = req.params.email            
+            const decoded = req.decoded.email
+
+            const user = await userCollection.findOne({ email: decoded })
+            if (user?.role === 'admin') {
+                const filter = { email: email }
+                const updateDoc = {
+                    $set:{role : 'admin'}
+                }
+                const result = await userCollection.updateOne(filter, updateDoc)
+                return res.send(result)                
+            }
+            return res.status(403).send({message: 'Dont Have Permission'})
+        })
+
+        // load admin user
+        app.get('/admin/:email', async (req, res) => {
+            const email = req.params.email 
+            const user = await userCollection.findOne({ email: email })
+            const isAdmin = user.role === 'admin'
+            res.send({isAdmin: isAdmin})
+        })
+
+        // Delete user 
+        app.delete('/user/:email', async (req, res) => {
+            const email = req.params.email
+            console.log(email);
+            const filter = { email: email }
+            const result = await userCollection.deleteOne(filter)
+            res.send(result)
+        })
+
+        
         // loading the all services
         // loading booking appointment using date
         app.get('/available', async(req, res) => {
             const date = req.query.date
-            console.log(date);
             const availavleServices = await servicesCollection.find().toArray()
             const query = {date: date}
             const bookedAppointments = await bookingCollection.find(query).toArray() //booked by modal
