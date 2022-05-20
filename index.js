@@ -19,7 +19,8 @@ async function run() {
 
         const servicesCollection = client.db('doctors-portal').collection('available-services')
         const bookingCollection = client.db('doctors-portal').collection('booking-info')
-        
+        const userCollection = client.db('doctors-portal').collection('users')
+
         // load all available services
         app.get('/availableServices', async(req , res) => {
             const query = {};
@@ -49,7 +50,22 @@ async function run() {
             return res.send({booking : true, result })
         })
 
-        // 
+        // Store User Info
+        app.put('/user/:email', async(req, res) => {
+            const email = req.params.email
+            const user = req.body
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: user
+            };
+            const result = await userCollection.updateOne(filter, updateDoc, options);
+            res.send(result)
+
+        })
+
+        // loading the all services
+        // loading booking appointment using date
         app.get('/available', async(req, res) => {
             const date = req.query.date
             console.log(date);
