@@ -1,7 +1,8 @@
 const express = require('express')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const jwt = require('jsonwebtoken');
-const cors = require('cors')
+const cors = require('cors');
+const { verify } = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 5000
 
@@ -14,6 +15,7 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 // JWT TOKEN VERIFYING 
+// verify the user have the valid token or not
 function jwtVerify(req, res, next) {
     const authorization = req.headers.authorization
 
@@ -26,7 +28,6 @@ function jwtVerify(req, res, next) {
                 return res.status(403).send({message: 'Forbidden Access'})
             }
             req.decoded = decoded
-            console.log(decoded) 
             next()
           });
     }
@@ -40,11 +41,26 @@ async function run() {
         const servicesCollection = client.db('doctors-portal').collection('available-services')
         const bookingCollection = client.db('doctors-portal').collection('booking-info')
         const userCollection = client.db('doctors-portal').collection('users')
+        const doctorCollection = client.db('doctors-portal').collection('doctors')
+
+        // verify the user is Admin or not
+        const adminUserVerify =async(req, res, next)=> {
+            const decoded = req.decoded.email
+            console.log(decoded);
+            const user = await userCollection.findOne({ email: decoded })
+            if (user?.role === 'admin') {
+                next()
+            }
+            else {
+               return res.status(403).send({message: 'Dont Have Permission'})
+            }
+            
+        }
 
         // load all available services
         app.get('/availableServices', async(req , res) => {
             const query = {};
-            const cursor = servicesCollection.find(query)
+            const cursor = servicesCollection.find(query).project({name: 1})
             const availableServices = await cursor.toArray()
             res.send(availableServices)
         })
@@ -97,20 +113,15 @@ async function run() {
         })
 
         // Update user to admin
-        app.put('/user/admin/:email', jwtVerify, async (req, res) => {
-            const email = req.params.email            
-            const decoded = req.decoded.email
-
-            const user = await userCollection.findOne({ email: decoded })
-            if (user?.role === 'admin') {
-                const filter = { email: email }
-                const updateDoc = {
-                    $set:{role : 'admin'}
-                }
-                const result = await userCollection.updateOne(filter, updateDoc)
-                return res.send(result)                
+        app.put('/user/admin/:email', jwtVerify, adminUserVerify,  async (req, res) => {
+            const email = req.params.email
+            const filter = { email: email }
+            const updateDoc = {
+                $set:{role : 'admin'}
             }
-            return res.status(403).send({message: 'Dont Have Permission'})
+            const result = await userCollection.updateOne(filter, updateDoc)
+            return res.send(result)                
+        
         })
 
         // load admin user
@@ -130,7 +141,14 @@ async function run() {
             res.send(result)
         })
 
-        
+        // Store doctors in DB
+        app.post('/doctors', jwtVerify, adminUserVerify, async (req, res) => {
+            const doctor = req.body
+            console.log(doctor);
+            const result = await doctorCollection.insertOne(doctor)
+            res.send(result)
+        })
+
         // loading the all services
         // loading booking appointment using date
         app.get('/available', async(req, res) => {
