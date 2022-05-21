@@ -149,6 +149,12 @@ async function run() {
             res.send(result)
         })
 
+        // Load all doctors
+        app.get('/doctors', async (req, res) => {
+            const resutl = await doctorCollection.find().toArray()
+            res.send(resutl)
+        })
+
         // loading the all services
         // loading booking appointment using date
         app.get('/available', async(req, res) => {
